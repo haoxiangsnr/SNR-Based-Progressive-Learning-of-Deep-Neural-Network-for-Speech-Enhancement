@@ -1,0 +1,39 @@
+{
+    "name": "basic",
+    "n_gpu": 1,
+    "use_cudnn": true,
+    "loss_func": "mse_loss",
+    "save_location": "/media/imucs/DataDisk/haoxiang/Experiment/DNN",
+    "description": "测试项目",
+    "visualize_metrics_period": 10,
+    "optimizer": {
+        "lr": 0.01
+    },
+    "trainer": {
+        "epochs": 1000,
+        "save_period": 3
+    },
+    "train_dataset": {
+        "mixture_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB-5.npy",
+        "clean_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/clean.npy",
+        "target_1_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB5.npy",
+        "target_2_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB15.npy"
+    },
+    "train_data": {
+        "limit": 0,
+        "offset": 0,
+        "batch_size": 256,
+        "shuffle": true,
+        "num_workers": 40
+    },
+    "valid_data": {
+        "limit": 400,
+        "offset": 9000,
+        "batch_size": 400,
+        "num_workers": 40
+    },
+    "test_data": {
+        "limit": 200,
+        "offset": 0
+    }
+}
