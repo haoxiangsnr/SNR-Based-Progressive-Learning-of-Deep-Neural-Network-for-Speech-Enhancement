@@ -1,9 +1,11 @@
 
 import os
+import shutil
 import time
 
 import librosa
 import numpy as np
+from tqdm import tqdm
 
 
 class ExecutionTime:
@@ -134,3 +136,98 @@ def sample_dataset_aligned(dataset_A, dataset_B, n_frames=128):
     sampling_dataset_B = np.array(sampling_dataset_B)
 
     return sampling_dataset_A, sampling_dataset_B
+
+
+def prepare_empty_dirs(dirs: list):
+    """
+    建立空目录。若已经存在，则删除后创建。
+    parents=True
+
+    Args:
+        dirs: Path list
+
+    Returns:
+        dirs 中各个目录的句柄
+    """
+    result = []
+    for d in dirs:
+        if d.exists():
+            shutil.rmtree(d.as_posix())
+        d.mkdir(parents=True, exist_ok=False)
+        result.append(d)
+    return result
+
+
+def load_wavs(file_paths, limit=None, sr=16000, minimum_sampling=0):
+    """
+    根据 file_paths 逐个加载 wav 文件
+
+    可以指定：
+    - wav 文件需要满足的最小采样点数
+    - 需要加载的 wav 文件数量，直到遍历完整个 list 或 满足了 limit 指定的数量要求
+
+    Args:
+        file_paths: 候选集合，其中采样点数大于 minimum_sampling 的 wav 才能被加载成功
+        limit: 要求加载的数量上限
+        sr: 采样率
+        minimum_sampling: 最小采样点数
+
+    """
+    wavs = []
+    i = 0
+
+    if not limit:
+        limit = len(file_paths)
+
+    p_bar = tqdm(total = limit, desc="Loading WAV files")
+
+    while i < limit:
+        wav, _ = librosa.load(file_paths[i], sr=sr)
+        if len(wav) >= minimum_sampling:
+            p_bar.update(1)
+            wavs.append(wav)
+            i += 1
+
+    p_bar.close()
+    return wavs
+
+def get_name_and_ext(path):
+    name, ext = os.path.splitext(os.path.basename(path))
+    return name, ext
+
+
+def load_noises(noise_wav_paths):
+    """
+    根据噪声列表加载噪声
+    Args:
+        noise_wav_paths (list): 噪声文件的路径列表
+
+    Returns:
+        dict: {"babble": [signals]}
+    """
+    out = {}
+    for noise_path in tqdm(noise_wav_paths, desc="Loading noises: "):
+        name, _ = get_name_and_ext(noise_path)
+        wav, _ = librosa.load(noise_path, sr=16000)
+        out[name] = wav
+
+    return out
+
+
+def add_noise_for_waveform(s, n, db):
+    """
+    为语音文件叠加噪声
+    ----
+    para:
+        s：原语音的时域信号
+        n：噪声的时域信号
+        db：信噪比
+    ----
+    return:
+        叠加噪声后的语音
+    """
+    alpha = np.sqrt(
+        np.sum(s ** 2) / (np.sum(n ** 2) * 10 ** (db / 10))
+    )
+    mix = s + alpha * n
+    return mix
