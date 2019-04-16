@@ -1,4 +1,3 @@
-
 import os
 import shutil
 import time
@@ -33,7 +32,7 @@ def cal_lps(y, pad=0):
     return lps
 
 def lps_to_mag(lps):
-    return np.power(np.exp(lps), 1/2)
+    return np.power(np.exp(lps), 1 / 2)
 
 def rebuild_waveform(mag, noisy_phase):
     return librosa.istft(mag * noisy_phase, hop_length=256, win_length=512, window='hamming')
@@ -214,7 +213,7 @@ def load_wavs(file_paths, limit=None, sr=16000, minimum_sampling=0):
     if not limit:
         limit = len(file_paths)
 
-    p_bar = tqdm(total = limit, desc="Loading WAV files")
+    p_bar = tqdm(total=limit, desc="Loading WAV files")
 
     while i < limit:
         wav, _ = librosa.load(file_paths[i], sr=sr)

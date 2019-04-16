@@ -18,12 +18,21 @@ Unofficial implementation, with some differences from the original paper.
 - [ ] Global Normalization
 - [ ] Test script
 
-
 ### Model coverage
 
 - [x] Single-SNR
 - [ ] Multi-SNR
 - [ ] Baseline DNN model
+
+## Dependencies
+
+- tqdm
+- pypesq
+- pystoi
+- librosa
+- pytorch==1.0
+- matplotlib
+- tensorboardX
 
 ## Usage
 
