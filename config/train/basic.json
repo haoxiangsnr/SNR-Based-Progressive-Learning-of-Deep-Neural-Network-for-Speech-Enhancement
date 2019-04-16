@@ -4,7 +4,7 @@
     "use_cudnn": true,
     "loss_func": "mse_loss",
     "save_location": "/media/imucs/DataDisk/haoxiang/Experiment/DNN",
-    "description": "测试项目",
+    "description": "修复 epoch 显示错误的问题",
     "visualize_metrics_period": 10,
     "optimizer": {
         "lr": 0.01
@@ -14,17 +14,17 @@
         "save_period": 3
     },
     "train_dataset": {
-        "mixture_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB-5.npy",
-        "clean_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/clean.npy",
-        "target_1_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB5.npy",
-        "target_2_dataset": "/media/imucs/DataDisk/haoxiang/Release/speech_enhancement/timit_single_snr/train/dB15.npy"
+        "mixture_dataset": "/home/imucs/Center/timit_single_snr/train/dB-5.npy",
+        "clean_dataset": "/home/imucs/Center/timit_single_snr/train/clean.npy",
+        "target_1_dataset": "/home/imucs/Center/timit_single_snr/train/dB5.npy",
+        "target_2_dataset": "/home/imucs/Center/timit_single_snr/train/dB15.npy"
     },
     "train_data": {
         "limit": 0,
         "offset": 0,
-        "batch_size": 256,
+        "batch_size": 200000,
         "shuffle": true,
-        "num_workers": 40
+        "num_workers": 100
     },
     "valid_data": {
         "limit": 400,

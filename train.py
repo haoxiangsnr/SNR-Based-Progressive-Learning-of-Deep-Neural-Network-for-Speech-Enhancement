@@ -27,8 +27,7 @@ def main(config, resume):
         dataset=train_dataset,
         batch_size=train_data_args["batch_size"],
         num_workers=train_data_args["num_workers"],
-        shuffle=train_data_args["shuffle"],
-        pin_memory=True
+        shuffle=train_data_args["shuffle"]
     )
 
     net_1 = FCLayerWithMultipleFrames(input_frames=7, n_features=257)

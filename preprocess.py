@@ -1,5 +1,4 @@
 import json
-import os
 import random
 from pathlib import Path
 
@@ -8,7 +7,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from utils import add_noise_for_waveform, prepare_empty_dirs, load_wavs
+from utils.utils import add_noise_for_waveform, prepare_empty_dirs, load_wavs
 
 def lps(y, pad=0):
     D = librosa.stft(y, n_fft=512, hop_length=256, window='hamming')
@@ -111,5 +110,5 @@ def main(config):
             np.save((dataset_dir / f"dB{SNR}.npy").as_posix(), store)
 
 if __name__ == "__main__":
-    config = json.load(open("./config.json"))
+    config = json.load(open("config/preprocess_config.json"))
     main(config)

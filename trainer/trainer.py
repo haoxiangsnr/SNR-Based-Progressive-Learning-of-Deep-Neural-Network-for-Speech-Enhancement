@@ -60,9 +60,6 @@ class Trainer(BaseTrainer):
         定义单次训练的逻辑
         """
         self._set_model_train()
-        loss_1_total = 0.0
-        loss_2_total = 0.0
-        loss_3_total = 0.0
         for i, (mixture, target_1, target_2, clean) in enumerate(self.train_data_loader):
             mixture = mixture.to(self.dev)
             target_1 = target_1.to(self.dev)
@@ -77,7 +74,6 @@ class Trainer(BaseTrainer):
             net_1_out = self.net_1(mixture)
             loss_1 = self.loss_func(net_1_out, target_1)
             loss_1.backward(retain_graph=True)
-            loss_1_total += loss_1
 
             for p in self.net_1.parameters():
                 p.grad *= 0.1
@@ -90,7 +86,6 @@ class Trainer(BaseTrainer):
             net_2_out = self.net_2(net_1_out)
             loss_2 = self.loss_func(net_2_out, target_2)
             loss_2.backward(retain_graph=True)
-            loss_2_total += loss_2
 
             for p in self.net_1.parameters():
                 p.grad *= 0.1
@@ -108,19 +103,17 @@ class Trainer(BaseTrainer):
             net_3_out = self.net_3(net_2_out)
             loss_3 = self.loss_func(net_3_out, clean)
             loss_3.backward()
-            loss_3_total += loss_3
 
             self.optimizer_1.step()
             self.optimizer_2.step()
             self.optimizer_3.step()
 
-        # https://discuss.pytorch.org/t/about-the-relation-between-batch-size-and-length-of-data-loader/10510/4
-        # The length of the loader will adapt to the batch_size
-        dl_len = len(self.train_data_loader)
-        visualize_loss = lambda tag, total: self.viz.writer.add_scalar(f"损失/{tag}", total / dl_len, epoch)
-        visualize_loss("Target 1 loss", loss_1_total)
-        visualize_loss("Target 2 loss", loss_2_total)
-        visualize_loss("Target 3 loss", loss_3_total)
+            iteration = (epoch - 1) * len(self.train_data_loader) * self.train_data_loader.batch_size + i * self.train_data_loader.batch_size
+            visualize_loss = lambda tag, loss: self.viz.writer.add_scalar(f"损失/{tag}", loss, iteration)
+            visualize_loss("Target 1 loss", loss_1)
+            visualize_loss("Target 2 loss", loss_2)
+            visualize_loss("Target 3 loss", loss_3)
+            print(f"Iteration: {iteration}: Target 1 loss: {loss_1}, Target 2 loss: {loss_2}, Target 3 loss: {loss_3}")
 
     def _test_epoch(self, epoch):
         """测试轮
@@ -206,6 +199,7 @@ class Trainer(BaseTrainer):
             self.viz.set_epoch(epoch)
 
             self._train_epoch(epoch)
+            print(f"[{timer.duration()} seconds] 本轮训练结束.")
 
             # if self.visualize_metrics_period != 0 and epoch % self.visualize_metrics_period == 0:
             #     # 测试一轮，并绘制波形文件
