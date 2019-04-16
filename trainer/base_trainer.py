@@ -156,7 +156,7 @@ class BaseTrainer:
             for param in net.parameters():
                 num_params += param.numel()
 
-        print(f"当前网络共有参数：{num_params / 1e6} 百万个.")
+        print(f"共有参数：{num_params / 1e6} 百万个.")
 
 
     @staticmethod
@@ -191,6 +191,7 @@ class BaseTrainer:
                 f"使用 GPU 数量为 {n_gpu}，大于系统拥有的 GPU 数量 {torch.cuda.device_count()}"
 
             if use_cudnn:
+                print("实验将使用 Cudnn.")
                 torch.backends.cudnn.enabled = True
                 torch.backends.cudnn.benchmark = True
 

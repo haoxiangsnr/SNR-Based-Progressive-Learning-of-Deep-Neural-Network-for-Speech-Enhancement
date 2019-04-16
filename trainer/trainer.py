@@ -6,7 +6,7 @@ import torch
 
 from trainer.base_trainer import BaseTrainer
 from utils.metrics import compute_STOI, compute_PESQ
-from utils.utils import ExecutionTime
+from utils.utils import ExecutionTime, cal_lps, phase, lps_to_mag, rebuild_waveform
 
 
 plt.switch_backend('agg')
@@ -18,6 +18,7 @@ class Trainer(BaseTrainer):
             config,
             resume: bool,
             train_dl,
+            valid_dl,
             loss_func,
             net_1,
             net_2,
@@ -38,7 +39,7 @@ class Trainer(BaseTrainer):
             optim_3
         )
         self.train_data_loader = train_dl
-        self.validation_data_loader = None
+        self.validation_data_loader = valid_dl
         self.test_data_loader = None
 
 
@@ -108,14 +109,15 @@ class Trainer(BaseTrainer):
             self.optimizer_2.step()
             self.optimizer_3.step()
 
-            iteration = (epoch - 1) * len(self.train_data_loader) * self.train_data_loader.batch_size + i * self.train_data_loader.batch_size
+            iteration = (epoch - 1) * len(
+                self.train_data_loader) * self.train_data_loader.batch_size + i * self.train_data_loader.batch_size
             visualize_loss = lambda tag, loss: self.viz.writer.add_scalar(f"损失/{tag}", loss, iteration)
             visualize_loss("Target 1 loss", loss_1)
             visualize_loss("Target 2 loss", loss_2)
             visualize_loss("Target 3 loss", loss_3)
             print(f"Iteration: {iteration}: Target 1 loss: {loss_1}, Target 2 loss: {loss_2}, Target 3 loss: {loss_3}")
 
-    def _test_epoch(self, epoch):
+    def _valid_epoch(self, epoch):
         """测试轮
         测试时使用测试集，batch_size 与 num_workers 均为 1，将每次测试后的结果保存至数组，最终返回数组，后续用于可视化
         """
@@ -127,36 +129,67 @@ class Trainer(BaseTrainer):
         pesq_c_d = []
 
         with torch.no_grad():
-            for i, (data, target, basename_text) in enumerate(self.test_data_loader):
-                data = data.to(self.dev)
-                target = target.to(self.dev)
-                output = self.model(data)
+            for i, (mixture, clean, title) in enumerate(self.validation_data_loader):
+                # 预处理为 LPS 特征
+                # 每 7 帧送入模型
+                # 7 帧经过模型得到一帧
+                # 合并最终的帧为 LPS 特征
+                # 将 LPS 转换为 waveform
+                # 可视化，计算相关评价指标
+                mixture = mixture.numpy().reshape(-1)
+                clean = clean.numpy().reshape(-1)
+                title = title[0]
+                tmp_mixture_lps = torch.Tensor(cal_lps(mixture, pad=3).T).unfold(0, 7, 1)
+                mixture_lps = tmp_mixture_lps.reshape(tmp_mixture_lps.shape[0], -1).numpy()
+                mixture_phase = phase(mixture)
 
-                self.viz.writer.add_audio(f"语音文件/{basename_text[0]}带噪语音", data, epoch, sample_rate=16000)
-                self.viz.writer.add_audio(f"语音文件/{basename_text[0]}降噪语音", output, epoch, sample_rate=16000)
-                self.viz.writer.add_audio(f"语音文件/{basename_text[0]}纯净语音", target, epoch, sample_rate=16000)
+                enhanced_frames = []
+                for j, lps_frame_wise in enumerate(mixture_lps):
+                    lps_frame_wise = torch.Tensor(lps_frame_wise.reshape(1, -1)).to(self.dev)
+                    net_1_out = self.net_1(lps_frame_wise)
+                    net_2_out = self.net_2(net_1_out)
+                    net_3_out = self.net_3(net_2_out)
+                    ave_out = np.mean((
+                        net_1_out.cpu().numpy(),
+                        net_2_out.cpu().numpy(),
+                        net_3_out.cpu().numpy()
+                    ), axis=(0,1)).reshape(1, -1)
+
+                    assert ave_out.shape == (1, 257)
+                    enhanced_frames.append(ave_out)
+
+                enhanced_lps = np.concatenate(enhanced_frames, axis=0)
+                assert mixture_lps.shape[1] / 7 == enhanced_lps.shape[1]
+
+                enhanced_mag = lps_to_mag(enhanced_lps.T) # 还原
+                enhanced = rebuild_waveform(enhanced_mag, mixture_phase)
+
+                min_length = min(len(mixture), len(enhanced), len(clean))
+                mixture = mixture[:min_length]
+                enhanced = enhanced[:min_length]
+                clean = clean[:min_length]
+
+                self.viz.writer.add_audio(f"语音文件/{title}带噪语音", mixture, epoch, sample_rate=16000)
+                self.viz.writer.add_audio(f"语音文件/{title}降噪语音", enhanced, epoch, sample_rate=16000)
+                self.viz.writer.add_audio(f"语音文件/{title}纯净语音", clean, epoch, sample_rate=16000)
 
                 fig, ax = plt.subplots(3, 1)
-                for j, y in enumerate([data, output, target]):
+                for j, y in enumerate([mixture, enhanced, clean]):
                     ax[j].set_title("mean: {:.3f}, std: {:.3f}, max: {:.3f}, min: {:.3f}".format(
-                        torch.mean(y),
-                        torch.std(y),
-                        torch.max(y),
-                        torch.min(y)
+                        np.mean(y),
+                        np.std(y),
+                        np.max(y),
+                        np.min(y)
                     ))
-                    librosa.display.waveplot(y.cpu().squeeze().numpy(), sr=16000, ax=ax[j])
+                    librosa.display.waveplot(y, sr=16000, ax=ax[j])
                 plt.tight_layout()
 
-                self.viz.writer.add_figure(f"语音波形图像/{basename_text}", fig, epoch)
+                self.viz.writer.add_figure(f"语音波形图像/{title}", fig, epoch)
 
-                ny = data.cpu().numpy().reshape(-1)
-                dy = output.cpu().numpy().reshape(-1)
-                cy = target.cpu().numpy().reshape(-1)
-
-                stoi_c_n.append(compute_STOI(cy, ny, sr=16000))
-                stoi_c_d.append(compute_STOI(cy, dy, sr=16000))
-                pesq_c_n.append(compute_PESQ(cy, ny, sr=16000))
-                pesq_c_d.append(compute_PESQ(cy, dy, sr=16000))
+                stoi_c_n.append(compute_STOI(clean, mixture, sr=16000))
+                stoi_c_d.append(compute_STOI(clean, enhanced, sr=16000))
+                pesq_c_n.append(compute_PESQ(clean, mixture, sr=16000))
+                pesq_c_d.append(compute_PESQ(clean, enhanced, sr=16000))
 
         get_metrics_ave = lambda metrics: np.sum(metrics) / len(metrics)
         self.viz.writer.add_scalars(f"评价指标均值/STOI", {
@@ -201,13 +234,13 @@ class Trainer(BaseTrainer):
             self._train_epoch(epoch)
             print(f"[{timer.duration()} seconds] 本轮训练结束.")
 
-            # if self.visualize_metrics_period != 0 and epoch % self.visualize_metrics_period == 0:
-            #     # 测试一轮，并绘制波形文件
-            #     print(f"[{timer.duration()} seconds] 训练结束，开始计算评价指标...")
-            #     score = self._test_epoch(epoch)
-            #
-            #     if self._is_best_score(score):
-            #         self._save_checkpoint(epoch, is_best=True)
+            if self.visualize_metrics_period != 0 and epoch % self.visualize_metrics_period == 0:
+                # 验证一轮，并绘制波形文件
+                print(f"[{timer.duration()} seconds] 训练结束，开始计算评价指标...")
+                score = self._valid_epoch(epoch)
+
+                if self._is_best_score(score):
+                    self._save_checkpoint(epoch, is_best=True)
 
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch)

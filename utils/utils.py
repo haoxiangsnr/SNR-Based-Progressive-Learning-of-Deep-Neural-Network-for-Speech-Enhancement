@@ -8,6 +8,41 @@ import numpy as np
 from tqdm import tqdm
 
 
+def corrected_length(clean_y, noise_y):
+    """
+    合成带噪语音前的长度矫正，使 len(clean_y) == len(noise_y)
+    """
+    if len(clean_y) < len(noise_y):
+        return clean_y, noise_y[:len(clean_y)]
+    elif len(clean_y) > len(noise_y):
+        pad_factor = (len(clean_y) // len(noise_y))  # 拓展系数为需要拓展的次数，不是总数
+        padded_noise_y = noise_y
+        for i in range(pad_factor):
+            padded_noise_y = np.concatenate((padded_noise_y, noise_y))
+        noise_y = padded_noise_y
+        return clean_y, noise_y[:len(clean_y)]
+    else:
+        return clean_y, noise_y
+
+def cal_lps(y, pad=0):
+    D = librosa.stft(y, n_fft=512, hop_length=256, window='hamming')
+    mag = np.abs(D)
+    lps = np.log(np.power(mag, 2))
+    if (pad != 0):
+        lps = np.concatenate((np.zeros((257, pad)), lps, np.zeros((257, pad))), axis=1)
+    return lps
+
+def lps_to_mag(lps):
+    return np.power(np.exp(lps), 1/2)
+
+def rebuild_waveform(mag, noisy_phase):
+    return librosa.istft(mag * noisy_phase, hop_length=256, win_length=512, window='hamming')
+
+def phase(y):
+    D = librosa.stft(y, n_fft=512, hop_length=256, window='hamming')
+    _, phase = librosa.magphase(D)
+    return phase
+
 class ExecutionTime:
     """
     Usage:
