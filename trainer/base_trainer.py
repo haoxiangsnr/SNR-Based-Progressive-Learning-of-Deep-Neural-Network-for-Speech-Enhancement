@@ -9,16 +9,16 @@ from utils.visualization import TensorboardXWriter
 
 class BaseTrainer:
     def __init__(
-        self,
-        config,
-        resume,
-        loss_func,
-        net_1,
-        net_2,
-        net_3,
-        optim_1,
-        optim_2,
-        optim_3
+            self,
+            config,
+            resume,
+            loss_func,
+            net_1,
+            net_2,
+            net_3,
+            optim_1,
+            optim_2,
+            optim_3
     ):
         """
         构建模型训练器的基类，包含以下功能：
@@ -134,7 +134,6 @@ class BaseTrainer:
             state_dict["net_1_state_dict"] = self.net_1.cpu().state_dict()
             state_dict["net_2_state_dict"] = self.net_2.cpu().state_dict()
             state_dict["net_3_state_dict"] = self.net_3.cpu().state_dict()
-
 
         # 存储三个数据字典
         torch.save(state_dict, (self.checkpoints_dir / "latest_model.tar").as_posix())

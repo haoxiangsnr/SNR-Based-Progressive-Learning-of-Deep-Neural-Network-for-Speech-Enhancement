@@ -153,7 +153,7 @@ class Trainer(BaseTrainer):
                         net_1_out.cpu().numpy(),
                         net_2_out.cpu().numpy(),
                         net_3_out.cpu().numpy()
-                    ), axis=(0,1)).reshape(1, -1)
+                    ), axis=(0, 1)).reshape(1, -1)
 
                     assert ave_out.shape == (1, 257)
                     enhanced_frames.append(ave_out)
@@ -161,7 +161,7 @@ class Trainer(BaseTrainer):
                 enhanced_lps = np.concatenate(enhanced_frames, axis=0)
                 assert mixture_lps.shape[1] / 7 == enhanced_lps.shape[1]
 
-                enhanced_mag = lps_to_mag(enhanced_lps.T) # 还原
+                enhanced_mag = lps_to_mag(enhanced_lps.T)  # 还原
                 enhanced = rebuild_waveform(enhanced_mag, mixture_phase)
 
                 min_length = min(len(mixture), len(enhanced), len(clean))

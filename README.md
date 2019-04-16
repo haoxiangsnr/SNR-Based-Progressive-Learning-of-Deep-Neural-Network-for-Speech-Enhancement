@@ -12,7 +12,7 @@ Unofficial implementation, with some differences from the original paper.
 - [x] Validation data
 - [x] Training logic
 - [x] validation logic
-- [x] visualization for validation set
+- [x] visualization for validation set (waveform, audio, metrics)
 - [x] Config parameters
 - [ ] Integrate pre-processing scripts in the project
 - [ ] Global Normalization
